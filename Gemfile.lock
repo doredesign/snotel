@@ -1,0 +1,21 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    faraday (0.15.4)
+      multipart-post (>= 1.2, < 3)
+    gruff (0.7.0)
+      rmagick (~> 2.13, >= 2.13.4)
+    iterm-imgcat (0.1.0)
+    multipart-post (2.0.0)
+    rmagick (2.16.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  faraday
+  gruff
+  iterm-imgcat
+
+BUNDLED WITH
+   1.17.1
