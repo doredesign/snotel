@@ -14,6 +14,28 @@ require "csv"
 # folder = "/tmp/charts"
 # filename = "#{folder}/exciting.png"
 
+LOCATIONS = [
+  {
+    title: "June Lake snotel (3440 ft)",
+    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/553:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
+  },
+  {
+    title: "Spirit Lake snotel (3520 ft)",
+    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/777:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
+  },
+  {
+    title: "Swift Creek snotel (4440 ft)",
+    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/1012:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
+  },
+  {
+    title: "Sheep Canyon snotel (3990 ft)",
+    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/748:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
+  },
+]
+
+@location_id = ARGV[0] || 0
+@location = LOCATIONS[@location_id.to_i]
+
 def execute(command_str)
   puts command_str
   `#{command_str}`
@@ -21,7 +43,7 @@ end
 
 def generate_graph(csv_string, filename)
   g = Gruff::Line.new
-  g.title = "June Lake snotel"
+  g.title = @location[:title]
   index = 0
   labels = {}
   snow_depth = []
@@ -49,9 +71,9 @@ end
 date_str = DateTime.now.strftime("%F_%H")
 folder = "/tmp/charts"
 execute "mkdir -p #{folder}" unless Dir.exist?(folder)
-filename = "#{folder}/snow_depth_#{date_str}.png"
+filename = "#{folder}/#{@location_id}_snow_depth_#{date_str}.png"
 unless File.exists?(filename)
-  url         = "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/553:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value"
+  url         = @location[:url]
   encoded_url = URI.encode(url)
   data        = Faraday.get encoded_url
   csv_string  = data.body.gsub(/^#.*\n/,"")
