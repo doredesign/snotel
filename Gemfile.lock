@@ -7,6 +7,7 @@ GEM
       rmagick (~> 2.13, >= 2.13.4)
     iterm-imgcat (0.1.0)
     multipart-post (2.0.0)
+    rationalist (2.0.0)
     rmagick (2.16.0)
 
 PLATFORMS
@@ -16,6 +17,7 @@ DEPENDENCIES
   faraday
   gruff
   iterm-imgcat
+  rationalist
 
 BUNDLED WITH
-   1.17.1
+   1.17.2

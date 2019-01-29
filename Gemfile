@@ -7,3 +7,4 @@ git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 gem 'gruff'
 gem 'iterm-imgcat'
 gem 'faraday'
+gem 'rationalist'

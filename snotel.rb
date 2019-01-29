@@ -1,40 +1,59 @@
 Bundler.require(:default)
 require "csv"
+argv = Rationalist.parse(ARGV, boolean: %w[f d])
+# args:
+# snotel index, default 0
+#
+# flags:
+#   -d daily graph
+#   -f force graph generation
 
-# g = Gruff::Line.new
-# g.title = 'Wow!  Look at this!'
-# g.labels = { 0 => '5/6', 1 => '5/15', 2 => '5/24', 3 => '5/30', 4 => '6/4',
-#              5 => '6/12', 6 => '6/21', 7 => '6/28' }
-# g.data :Jimmy, [25, 36, 86, 39, 25, 31, 79, 88]
-# g.data :Charles, [80, 54, 67, 54, 68, 70, 90, 95]
-# g.data :Julie, [22, 29, 35, 38, 36, 40, 46, 57]
-# g.data :Jane, [95, 95, 95, 90, 85, 80, 88, 100]
-# g.data :Philip, [90, 34, 23, 12, 78, 89, 98, 88]
-# g.data :Arthur, [5, 10, 13, 11, 6, 16, 22, 32]
-# folder = "/tmp/charts"
-# filename = "#{folder}/exciting.png"
+class Location
+  LOCATIONS = [
+    {
+      title: "June Lake snotel (3440 ft)",
+      snotel_id: "553",
+    },
+    {
+      title: "Spirit Lake snotel (3520 ft)",
+      snotel_id: "777",
+    },
+    {
+      title: "Swift Creek snotel (4440 ft)",
+      snotel_id: "1012",
+    },
+    {
+      title: "Sheep Canyon snotel (3990 ft)",
+      snotel_id: "748",
+    },
+  ]
 
-LOCATIONS = [
-  {
-    title: "June Lake snotel (3440 ft)",
-    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/553:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
-  },
-  {
-    title: "Spirit Lake snotel (3520 ft)",
-    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/777:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
-  },
-  {
-    title: "Swift Creek snotel (4440 ft)",
-    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/1012:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
-  },
-  {
-    title: "Sheep Canyon snotel (3990 ft)",
-    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/748:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
-  },
-]
+  TEMPLATES = {
+    url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/hourly/%{id}:WA:SNTL|id=%22%22|name/-167,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value",
+    daily_url: "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/daily/%{id}:wa:SNTL/CurrentWY,0/WTEQ::value,SNWD::value,PREC::value,TOBS::value,TMAX::value,TMIN::value,TAVG::value",
+  }
 
-@location_id = ARGV[0] || 0
-@location = LOCATIONS[@location_id.to_i]
+  def self.hash_from_index(index)
+    hash = LOCATIONS[index.to_i]
+    # hash[:url] = TEMPLATES[:url] % {id: hash[:snotel_id]}
+    hash[:url] = format_str(TEMPLATES[:url], id: hash[:snotel_id])
+    hash[:daily_url] = format_str(TEMPLATES[:daily_url], id: hash[:snotel_id])
+    hash
+  end
+
+  private
+
+  def self.format_str(str, values)
+    new_str = str.dup
+    values.each do |key, value|
+      new_str = new_str.sub(/%{#{key}}/, value)
+    end
+    new_str
+  end
+end
+
+@location_id = argv[:_][0] || 0
+@location = Location.hash_from_index @location_id
 
 def execute(command_str)
   puts command_str
@@ -68,16 +87,52 @@ def generate_graph(csv_string, filename)
   g.write(filename)
 end
 
-date_str = DateTime.now.strftime("%F_%H")
+def generate_daily_graph(csv_string, filename)
+  g = Gruff::Line.new
+  g.title = @location[:title]
+  index = 0
+  labels = {}
+  snow_depth = []
+  dates_count = csv_string.split("\n").count
+  label_every = dates_count / 10
+  CSV.parse(csv_string, headers: true) do |row|
+    data_point = row["Snow Depth (in) Start of Day Values"]
+    next unless data_point
+
+    datetime = DateTime.parse row["Date"]
+    snow_depth << data_point.to_i
+
+    # first, last, and periodic
+    if index == 0 || index == (dates_count - 2) || index % label_every == 0
+      labels[index] = datetime.strftime("%-m/%-d")
+    end
+    index += 1
+  end
+  g.labels = labels
+  g.data "Snow depth (in)", snow_depth
+
+  g.write(filename)
+end
+
 folder = "/tmp/charts"
 execute "mkdir -p #{folder}" unless Dir.exist?(folder)
+
+# Do daily graph
+if argv[:d]
+  date_str = Date.today.to_s
+  url      = @location[:daily_url]
+  meth     = method(:generate_daily_graph)
+else # hourly
+  date_str = DateTime.now.strftime("%F_%H")
+  url      = @location[:url]
+  meth     = method(:generate_graph)
+end
 filename = "#{folder}/#{@location_id}_snow_depth_#{date_str}.png"
-unless File.exists?(filename)
-  url         = @location[:url]
+if argv[:f] || !File.exists?(filename)
   encoded_url = URI.encode(url)
   data        = Faraday.get encoded_url
   csv_string  = data.body.gsub(/^#.*\n/,"")
-  generate_graph(csv_string, filename)
+  meth.call(csv_string, filename)
 end
 
 include Iterm::Imgcat
