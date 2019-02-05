@@ -54,6 +54,8 @@ end
 
 @location_id = argv[:_][0] || 0
 @location = Location.hash_from_index @location_id
+DAILY_START_DATE = Date.parse("2018-11-20").freeze
+LABEL_COUNT = 11.freeze
 
 def execute(command_str)
   puts command_str
@@ -93,13 +95,21 @@ def generate_daily_graph(csv_string, filename)
   index = 0
   labels = {}
   snow_depth = []
-  dates_count = csv_string.split("\n").count
-  label_every = dates_count / 10
+  dates_count = 0
+  CSV.parse(csv_string, headers: true) do |row|
+    datetime = DateTime.parse row["Date"]
+    next if datetime < DAILY_START_DATE
+
+    dates_count += 1
+  end
+
+  label_every = dates_count / (LABEL_COUNT - 2)
   CSV.parse(csv_string, headers: true) do |row|
     data_point = row["Snow Depth (in) Start of Day Values"]
     next unless data_point
 
     datetime = DateTime.parse row["Date"]
+    next if datetime < DAILY_START_DATE
     snow_depth << data_point.to_i
 
     # first, last, and periodic
