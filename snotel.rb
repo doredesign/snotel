@@ -56,6 +56,7 @@ end
 @location = Location.hash_from_index @location_id
 DAILY_START_DATE = Date.parse("2018-11-20").freeze
 LABEL_COUNT = 11.freeze
+OUTLIER_CUFOFF = 210.freeze
 
 def execute(command_str)
   puts command_str
@@ -71,7 +72,7 @@ def generate_graph(csv_string, filename)
   dates = []
   CSV.parse(csv_string, headers: true) do |row|
     data_point = row["Snow Depth (in)"]
-    next unless data_point
+    next unless data_point && data_point.to_i < OUTLIER_CUFOFF
 
     datetime = DateTime.parse row["Date"]
     date_str = datetime.to_date.to_s
