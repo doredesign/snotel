@@ -1,6 +1,15 @@
-Bundler.require(:default)
+require 'bundler/inline'
+
+gemfile do
+  source 'https://rubygems.org'
+  gem 'gruff'
+  gem 'iterm-imgcat'
+  gem 'faraday'
+  gem 'rationalist'
+end
 require "csv"
 argv = Rationalist.parse(ARGV, boolean: %w[f d])
+
 # args:
 # snotel index, default 0
 #
